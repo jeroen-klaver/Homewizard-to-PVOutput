@@ -97,7 +97,8 @@ class PVOutputDataConverter:
     def convert_to_pvoutput(
         p1_data: dict,
         kwh_data: dict,
-        daily_totals: dict = None
+        daily_totals: dict = None,
+        weather_data: dict = None
     ) -> dict:
         """
         Converteer HomeWizard data naar PVOutput formaat
@@ -106,6 +107,7 @@ class PVOutputDataConverter:
             p1_data: Data van P1 meter (import/export)
             kwh_data: Data van kWh meter(s) (zonnepanelen) - kan gecombineerde data zijn
             daily_totals: Dagelijkse totalen (optioneel, voor cumulatieve data)
+            weather_data: Weather data (optioneel, voor temperatuur)
 
         Returns:
             Dict met PVOutput parameters:
@@ -113,6 +115,8 @@ class PVOutputDataConverter:
             - power_generation: Actueel opgewekt vermogen (W)
             - energy_consumption: Totaal verbruikt vandaag (Wh)
             - power_consumption: Actueel verbruik (W)
+            - temperature: Temperatuur (°C)
+            - voltage: Voltage (V)
 
         PVOutput API parameters:
         - v1: Energy Generation (Wh) - cumulatief vandaag
@@ -136,6 +140,14 @@ class PVOutputDataConverter:
             generation = result.get('power_generation', 0)
             grid_power = p1_data.get('active_power_w', 0)
             result['power_consumption'] = abs(int(generation + grid_power))
+
+        # v5: Temperature (van weather data)
+        if weather_data and weather_data.get('temperature_c') is not None:
+            result['temperature'] = round(weather_data.get('temperature_c'), 1)
+
+        # v6: Voltage (gemiddelde van alle fases)
+        if p1_data and p1_data.get('voltage_avg_v') is not None:
+            result['voltage'] = round(p1_data.get('voltage_avg_v'), 1)
 
         # v1 & v3: Dagelijkse totalen (cumulatief voor vandaag)
         if daily_totals:

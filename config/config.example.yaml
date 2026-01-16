@@ -27,6 +27,15 @@ pvoutput:
 # Update interval in seconden (minimum 300 voor gratis PVOutput account)
 update_interval: 300
 
+# Weather data configuratie (optioneel)
+# Open-Meteo wordt gebruikt - geen API key nodig!
+weather:
+  enabled: false  # Zet op true om weather data naar PVOutput te sturen
+  latitude: 52.3676   # Jouw locatie (voorbeeld: Amsterdam)
+  longitude: 4.9041   # Gebruik Google Maps om je coordinaten te vinden
+  provider: "openmeteo"
+  cache_duration_minutes: 15  # Hoe lang weather data gecached wordt
+
 # Webserver configuratie
 webserver:
   port: 8080

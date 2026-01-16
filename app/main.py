@@ -11,6 +11,7 @@ from app.config import Config
 from app.homewizard import HomeWizardClient, HomeWizardDataProcessor
 from app.pvoutput import PVOutputClient, PVOutputDataConverter
 from app.data_manager import DataManager
+from app.weather import OpenMeteoClient
 
 # Globale instances
 config = Config()
@@ -18,11 +19,12 @@ data_manager = DataManager()
 p1_client = None
 kwh_clients = {}  # Dictionary om meerdere kWh meter clients op te slaan (key: host)
 pvoutput_client = None
+weather_client = None
 update_task = None
 
 async def collect_and_send_data():
     """Verzamel data van HomeWizard en stuur naar PVOutput"""
-    global p1_client, kwh_clients, pvoutput_client
+    global p1_client, kwh_clients, pvoutput_client, weather_client
 
     # Haal P1 data op
     p1_data = {}
@@ -70,6 +72,28 @@ async def collect_and_send_data():
         data_manager.add_kwh_data(kwh_data)
         print(f"Totaal kWh data (alle meters): {kwh_data.get('active_power_w', 0)}W van {kwh_data.get('meter_count', 0)} meter(s)")
 
+    # Haal weather data op
+    weather_data = {}
+    if config.weather_enabled and config.weather_latitude and config.weather_longitude:
+        if not weather_client:
+            try:
+                weather_client = OpenMeteoClient(
+                    config.weather_latitude,
+                    config.weather_longitude,
+                    cache_duration=config.weather_cache_duration_minutes
+                )
+            except ValueError as e:
+                print(f"Fout bij initialiseren weather client: {e}")
+                config.data['weather']['enabled'] = False  # Disable weather on invalid config
+
+        if weather_client:
+            try:
+                weather_data = await weather_client.get_weather()
+                data_manager.add_weather_data(weather_data)
+                print(f"Weather data verzameld: {weather_data.get('temperature_c')}°C")
+            except Exception as e:
+                print(f"Fout bij ophalen weather data: {e} (niet-fataal, doorgaan zonder weather)")
+
     # Stuur naar PVOutput
     if config.pvoutput_api_key and config.pvoutput_system_id:
         if not pvoutput_client:
@@ -78,15 +102,19 @@ async def collect_and_send_data():
         # Haal dagelijkse totalen op
         daily_totals = data_manager.get_daily_totals()
 
-        # Converteer naar PVOutput formaat (met dagelijkse totalen)
-        pvoutput_data = PVOutputDataConverter.convert_to_pvoutput(p1_data, kwh_data, daily_totals)
+        # Converteer naar PVOutput formaat (met dagelijkse totalen en weather data)
+        pvoutput_data = PVOutputDataConverter.convert_to_pvoutput(
+            p1_data, kwh_data, daily_totals, weather_data
+        )
 
         if pvoutput_data:
             await pvoutput_client.add_status(
                 energy_generation=pvoutput_data.get('energy_generation'),
                 power_generation=pvoutput_data.get('power_generation'),
                 energy_consumption=pvoutput_data.get('energy_consumption'),
-                power_consumption=pvoutput_data.get('power_consumption')
+                power_consumption=pvoutput_data.get('power_consumption'),
+                temperature=pvoutput_data.get('temperature'),
+                voltage=pvoutput_data.get('voltage')
             )
             print(f"Data naar PVOutput gestuurd: {pvoutput_data}")
 
@@ -229,6 +257,21 @@ async def trigger_update():
     try:
         await collect_and_send_data()
         return {"status": "success", "message": "Data update uitgevoerd"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/weather/current")
+async def get_current_weather():
+    """Haal actuele weather data op"""
+    if not config.weather_enabled:
+        raise HTTPException(status_code=400, detail="Weather integratie niet ingeschakeld")
+
+    if not weather_client:
+        raise HTTPException(status_code=400, detail="Weather client niet geïnitialiseerd")
+
+    try:
+        weather_data = await weather_client.get_weather()
+        return weather_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

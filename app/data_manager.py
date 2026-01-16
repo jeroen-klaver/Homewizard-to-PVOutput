@@ -9,8 +9,10 @@ class DataManager:
         self.max_history_hours = max_history_hours
         self.p1_history = deque(maxlen=max_history_hours * 60)  # Per minuut
         self.kwh_history = deque(maxlen=max_history_hours * 60)
+        self.weather_history = deque(maxlen=max_history_hours * 4)  # Elke 15 min
         self.latest_p1_data = {}
         self.latest_kwh_data = {}
+        self.latest_weather_data = {}
         self.last_update = None
 
         # Voor dagelijkse cumulatieve berekeningen (PVOutput)
@@ -63,11 +65,20 @@ class DataManager:
             self.latest_kwh_data = data
             self.last_update = datetime.now()
 
+    def add_weather_data(self, data: Dict):
+        """Voeg weather data toe aan geschiedenis"""
+        if data:
+            data['_timestamp'] = datetime.now()
+            self.weather_history.append(data)
+            self.latest_weather_data = data
+            self.last_update = datetime.now()
+
     def get_latest_data(self) -> Dict:
         """Haal nieuwste data op"""
         return {
             'p1': self.latest_p1_data,
             'kwh': self.latest_kwh_data,
+            'weather': self.latest_weather_data,
             'last_update': self.last_update.isoformat() if self.last_update else None
         }
 

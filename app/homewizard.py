@@ -47,12 +47,25 @@ class HomeWizardDataProcessor:
             - active_power_l1_w: actief vermogen fase 1
             - active_power_l2_w: actief vermogen fase 2
             - active_power_l3_w: actief vermogen fase 3
+            - voltage_l1_v: voltage fase 1 (V)
+            - voltage_l2_v: voltage fase 2 (V)
+            - voltage_l3_v: voltage fase 3 (V)
+            - voltage_avg_v: gemiddelde voltage (V)
             - timestamp: tijd van meting
         """
         if not data:
             return {}
 
-        return {
+        # Haal voltage data op
+        voltage_l1 = data.get('voltage_sag_l1_v')
+        voltage_l2 = data.get('voltage_sag_l2_v')
+        voltage_l3 = data.get('voltage_sag_l3_v')
+
+        # Bereken gemiddelde voltage van beschikbare fases
+        voltages = [v for v in [voltage_l1, voltage_l2, voltage_l3] if v is not None and v > 0]
+        voltage_avg = sum(voltages) / len(voltages) if voltages else None
+
+        result = {
             'total_power_import_kwh': data.get('total_power_import_kwh', 0),
             'total_power_export_kwh': data.get('total_power_export_kwh', 0),
             'active_power_w': data.get('active_power_w', 0),
@@ -61,6 +74,18 @@ class HomeWizardDataProcessor:
             'active_power_l3_w': data.get('active_power_l3_w', 0),
             'timestamp': datetime.now().isoformat()
         }
+
+        # Voeg voltage data toe als beschikbaar
+        if voltage_l1 is not None:
+            result['voltage_l1_v'] = voltage_l1
+        if voltage_l2 is not None:
+            result['voltage_l2_v'] = voltage_l2
+        if voltage_l3 is not None:
+            result['voltage_l3_v'] = voltage_l3
+        if voltage_avg is not None:
+            result['voltage_avg_v'] = voltage_avg
+
+        return result
 
     @staticmethod
     def process_kwh_data(data: Dict) -> Dict:

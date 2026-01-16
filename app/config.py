@@ -28,6 +28,13 @@ class Config:
             'homewizard_kwh_meters': [],
             'pvoutput': {'api_key': '', 'system_id': ''},
             'update_interval': 300,
+            'weather': {
+                'enabled': False,
+                'latitude': None,
+                'longitude': None,
+                'provider': 'openmeteo',
+                'cache_duration_minutes': 15
+            },
             'webserver': {'port': 8080, 'host': '0.0.0.0'}
         }
 
@@ -105,3 +112,23 @@ class Config:
     @property
     def webserver_host(self) -> str:
         return self.data.get('webserver', {}).get('host', '0.0.0.0')
+
+    @property
+    def weather_enabled(self) -> bool:
+        return self.data.get('weather', {}).get('enabled', False)
+
+    @property
+    def weather_latitude(self) -> Optional[float]:
+        return self.data.get('weather', {}).get('latitude')
+
+    @property
+    def weather_longitude(self) -> Optional[float]:
+        return self.data.get('weather', {}).get('longitude')
+
+    @property
+    def weather_provider(self) -> str:
+        return self.data.get('weather', {}).get('provider', 'openmeteo')
+
+    @property
+    def weather_cache_duration_minutes(self) -> int:
+        return self.data.get('weather', {}).get('cache_duration_minutes', 15)
