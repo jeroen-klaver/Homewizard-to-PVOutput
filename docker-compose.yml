@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  homewizard-pvoutput:
+    build: .
+    container_name: homewizard-pvoutput
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+    environment:
+      - TZ=Europe/Amsterdam
+    networks:
+      - homewizard-network
+
+networks:
+  homewizard-network:
+    driver: bridge

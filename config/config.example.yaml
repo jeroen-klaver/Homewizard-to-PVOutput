@@ -1,0 +1,33 @@
+# HomeWizard Solar Data naar PVOutput - Configuratie
+
+# HomeWizard P1 Meter configuratie
+homewizard_p1:
+  host: "192.168.1.100"  # IP adres van je HomeWizard P1 meter
+  enabled: true
+
+# HomeWizard kWh Meters configuratie (voor zonnepanelen)
+# Je kunt meerdere meters toevoegen, de data wordt automatisch gecombineerd
+homewizard_kwh_meters:
+  - name: "Omvormer 1"
+    host: "192.168.1.101"
+    enabled: true
+  - name: "Omvormer 2"
+    host: "192.168.1.102"
+    enabled: false
+  # Voeg meer meters toe indien nodig:
+  # - name: "Omvormer 3"
+  #   host: "192.168.1.103"
+  #   enabled: true
+
+# PVOutput configuratie
+pvoutput:
+  api_key: "your-api-key-here"
+  system_id: "your-system-id-here"
+
+# Update interval in seconden (minimum 300 voor gratis PVOutput account)
+update_interval: 300
+
+# Webserver configuratie
+webserver:
+  port: 8080
+  host: "0.0.0.0"
