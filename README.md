@@ -2,6 +2,8 @@
 
 Een complete Docker container oplossing die data van HomeWizard apparaten (P1 meter en kWh meter) uitleest en automatisch doorstuurt naar PVOutput.org. Inclusief een mooie webinterface met live data visualisatie en grafieken.
 
+![Dashboard Screenshot](dashboard.png)
+
 ## Features
 
 - **Automatische data collectie** van HomeWizard P1 meter (stroomverbruik/teruglevering)
