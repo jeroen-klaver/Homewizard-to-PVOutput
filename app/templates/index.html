@@ -92,6 +92,35 @@
             </div>
         </div>
 
+        <!-- Dagelijkse Totalen -->
+        <div class="daily-section">
+            <h3>📅 Vandaag</h3>
+            <div class="daily-stats">
+                <div class="daily-stat">
+                    <span class="daily-label">Opgewekt:</span>
+                    <span id="daily-generation" class="daily-value">-</span> kWh
+                </div>
+                <div class="daily-stat">
+                    <span class="daily-label">Verbruikt:</span>
+                    <span id="daily-consumption" class="daily-value">-</span> kWh
+                </div>
+                <div class="daily-stat">
+                    <span class="daily-label">Import:</span>
+                    <span id="daily-import" class="daily-value">-</span> kWh
+                </div>
+                <div class="daily-stat">
+                    <span class="daily-label">Export:</span>
+                    <span id="daily-export" class="daily-value">-</span> kWh
+                </div>
+            </div>
+        </div>
+
+        <!-- Individuele kWh Meters -->
+        <div id="individual-meters-section" class="meters-section" style="display: none;">
+            <h3>🔌 Individuele Omvormers</h3>
+            <div id="individual-meters-grid" class="meters-grid"></div>
+        </div>
+
         <!-- Grafieken -->
         <div class="charts-section">
             <div class="chart-container">
@@ -124,17 +153,9 @@
                         </div>
 
                         <div class="form-section">
-                            <h4>HomeWizard kWh Meter</h4>
-                            <div class="form-group">
-                                <label>
-                                    <input type="checkbox" id="kwh-enabled" name="kwh-enabled">
-                                    Ingeschakeld
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label for="kwh-host">IP Adres:</label>
-                                <input type="text" id="kwh-host" name="kwh-host" placeholder="192.168.1.101">
-                            </div>
+                            <h4>HomeWizard kWh Meters (Omvormers)</h4>
+                            <div id="kwh-meters-config"></div>
+                            <button type="button" id="add-kwh-meter-btn" class="btn-secondary">+ Meter toevoegen</button>
                         </div>
 
                         <div class="form-section">

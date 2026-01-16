@@ -94,36 +94,57 @@ class PVOutputDataConverter:
     """Converteer HomeWizard data naar PVOutput formaat"""
 
     @staticmethod
-    def convert_to_pvoutput(p1_data: dict, kwh_data: dict) -> dict:
+    def convert_to_pvoutput(
+        p1_data: dict,
+        kwh_data: dict,
+        daily_totals: dict = None
+    ) -> dict:
         """
         Converteer HomeWizard data naar PVOutput formaat
 
         Args:
             p1_data: Data van P1 meter (import/export)
-            kwh_data: Data van kWh meter (zonnepanelen)
+            kwh_data: Data van kWh meter(s) (zonnepanelen) - kan gecombineerde data zijn
+            daily_totals: Dagelijkse totalen (optioneel, voor cumulatieve data)
 
         Returns:
-            Dict met PVOutput parameters
+            Dict met PVOutput parameters:
+            - energy_generation: Totaal opgewekt vandaag (Wh)
+            - power_generation: Actueel opgewekt vermogen (W)
+            - energy_consumption: Totaal verbruikt vandaag (Wh)
+            - power_consumption: Actueel verbruik (W)
+
+        PVOutput API parameters:
+        - v1: Energy Generation (Wh) - cumulatief vandaag
+        - v2: Power Generation (W) - actueel
+        - v3: Energy Consumption (Wh) - cumulatief vandaag
+        - v4: Power Consumption (W) - actueel
+        - v5: Temperature (°C) - optioneel
+        - v6: Voltage (V) - optioneel
         """
         result = {}
 
-        # Opwekking (van kWh meter als beschikbaar)
+        # v2: Actuele opwekking (van kWh meter(s) als beschikbaar)
         if kwh_data and kwh_data.get('active_power_w') is not None:
-            result['power_generation'] = abs(kwh_data.get('active_power_w', 0))
+            result['power_generation'] = abs(int(kwh_data.get('active_power_w', 0)))
 
-        # Verbruik berekenen
-        # Als we exporteren (negatief vermogen), dan is verbruik = opwekking - export
-        # Als we importeren (positief vermogen), dan is verbruik = opwekking + import
+        # v4: Actueel verbruik berekenen
+        # Verbruik = Opwekking + Grid power
+        # Als grid power negatief is (export), dan is verbruik lager
+        # Als grid power positief is (import), dan is verbruik hoger
         if p1_data and p1_data.get('active_power_w') is not None:
-            active_power = p1_data.get('active_power_w', 0)
+            generation = result.get('power_generation', 0)
+            grid_power = p1_data.get('active_power_w', 0)
+            result['power_consumption'] = abs(int(generation + grid_power))
 
-            if active_power > 0:
-                # Importeren: verbruik = opwekking + import
-                generation = result.get('power_generation', 0)
-                result['power_consumption'] = generation + active_power
-            else:
-                # Exporteren: verbruik = opwekking - export
-                generation = result.get('power_generation', 0)
-                result['power_consumption'] = generation + active_power  # active_power is negatief
+        # v1 & v3: Dagelijkse totalen (cumulatief voor vandaag)
+        if daily_totals:
+            # v1: Totaal opgewekt vandaag
+            if 'energy_generation_wh' in daily_totals:
+                result['energy_generation'] = daily_totals['energy_generation_wh']
+
+            # v3: Totaal verbruikt vandaag
+            if 'energy_consumption_wh' in daily_totals:
+                result['energy_consumption'] = daily_totals['energy_consumption_wh']
 
         return result

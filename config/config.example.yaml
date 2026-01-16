@@ -5,10 +5,19 @@ homewizard_p1:
   host: "192.168.1.100"  # IP adres van je HomeWizard P1 meter
   enabled: true
 
-# HomeWizard kWh Meter configuratie (optioneel, voor zonnepanelen)
-homewizard_kwh:
-  host: "192.168.1.101"  # IP adres van je HomeWizard kWh meter
-  enabled: false
+# HomeWizard kWh Meters configuratie (voor zonnepanelen)
+# Je kunt meerdere meters toevoegen, de data wordt automatisch gecombineerd
+homewizard_kwh_meters:
+  - name: "Omvormer 1"
+    host: "192.168.1.101"
+    enabled: true
+  - name: "Omvormer 2"
+    host: "192.168.1.102"
+    enabled: false
+  # Voeg meer meters toe indien nodig:
+  # - name: "Omvormer 3"
+  #   host: "192.168.1.103"
+  #   enabled: true
 
 # PVOutput configuratie
 pvoutput:

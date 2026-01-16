@@ -94,6 +94,50 @@ function formatNumber(num) {
     return Math.round(num).toLocaleString('nl-NL');
 }
 
+// Update individuele kWh meters weergave
+function updateIndividualMeters(meters) {
+    const section = document.getElementById('individual-meters-section');
+    const grid = document.getElementById('individual-meters-grid');
+
+    if (!meters || meters.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    grid.innerHTML = '';
+
+    meters.forEach(meter => {
+        const meterCard = document.createElement('div');
+        meterCard.className = 'meter-card';
+        meterCard.innerHTML = `
+            <h4>${meter.meter_name || 'Onbekend'}</h4>
+            <div class="meter-power">${formatNumber(meter.active_power_w || 0)} W</div>
+            <div class="meter-total">${(meter.total_power_export_kwh || 0).toFixed(2)} kWh</div>
+        `;
+        grid.appendChild(meterCard);
+    });
+}
+
+// Update dagelijkse totalen
+async function updateDailyTotals() {
+    try {
+        const response = await fetch('/api/data/daily');
+        const daily = await response.json();
+
+        document.getElementById('daily-generation').textContent =
+            (daily.energy_generation_wh / 1000).toFixed(2);
+        document.getElementById('daily-consumption').textContent =
+            (daily.energy_consumption_wh / 1000).toFixed(2);
+        document.getElementById('daily-import').textContent =
+            (daily.energy_import_wh / 1000).toFixed(2);
+        document.getElementById('daily-export').textContent =
+            (daily.energy_export_wh / 1000).toFixed(2);
+    } catch (error) {
+        console.error('Fout bij updaten dagelijkse totalen:', error);
+    }
+}
+
 // Update dashboard met nieuwste data
 async function updateDashboard() {
     try {
@@ -157,6 +201,14 @@ async function updateDashboard() {
         const latest = await latestResponse.json();
         document.getElementById('last-update').textContent = formatTime(latest.last_update);
 
+        // Update individuele meters
+        if (stats.individual_kwh_meters) {
+            updateIndividualMeters(stats.individual_kwh_meters);
+        }
+
+        // Update dagelijkse totalen
+        await updateDailyTotals();
+
         // Update grafiek
         await updateChart();
 
@@ -215,6 +267,106 @@ async function updateChart() {
     }
 }
 
+// Render kWh meters configuratie
+function renderKwhMetersConfig(meters) {
+    const container = document.getElementById('kwh-meters-config');
+    container.innerHTML = '';
+
+    if (!meters || meters.length === 0) {
+        meters = [{ name: 'Omvormer 1', host: '', enabled: true }];
+    }
+
+    meters.forEach((meter, index) => {
+        const meterDiv = document.createElement('div');
+        meterDiv.className = 'kwh-meter-config';
+        meterDiv.innerHTML = `
+            <div class="meter-config-header">
+                <h5>Meter ${index + 1}</h5>
+                ${meters.length > 1 ? `<button type="button" class="btn-remove" onclick="removeKwhMeter(${index})">×</button>` : ''}
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" class="kwh-meter-enabled" data-index="${index}" ${meter.enabled ? 'checked' : ''}>
+                    Ingeschakeld
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Naam:</label>
+                <input type="text" class="kwh-meter-name" data-index="${index}" value="${meter.name || ''}" placeholder="Omvormer 1">
+            </div>
+            <div class="form-group">
+                <label>IP Adres:</label>
+                <input type="text" class="kwh-meter-host" data-index="${index}" value="${meter.host || ''}" placeholder="192.168.1.101">
+            </div>
+        `;
+        container.appendChild(meterDiv);
+    });
+}
+
+// Voeg kWh meter toe
+function addKwhMeter() {
+    const container = document.getElementById('kwh-meters-config');
+    const currentCount = container.querySelectorAll('.kwh-meter-config').length;
+
+    const meterDiv = document.createElement('div');
+    meterDiv.className = 'kwh-meter-config';
+    meterDiv.innerHTML = `
+        <div class="meter-config-header">
+            <h5>Meter ${currentCount + 1}</h5>
+            <button type="button" class="btn-remove" onclick="removeKwhMeter(${currentCount})">×</button>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" class="kwh-meter-enabled" data-index="${currentCount}" checked>
+                Ingeschakeld
+            </label>
+        </div>
+        <div class="form-group">
+            <label>Naam:</label>
+            <input type="text" class="kwh-meter-name" data-index="${currentCount}" placeholder="Omvormer ${currentCount + 1}">
+        </div>
+        <div class="form-group">
+            <label>IP Adres:</label>
+            <input type="text" class="kwh-meter-host" data-index="${currentCount}" placeholder="192.168.1.10${currentCount + 1}">
+        </div>
+    `;
+    container.appendChild(meterDiv);
+}
+
+// Verwijder kWh meter
+function removeKwhMeter(index) {
+    const container = document.getElementById('kwh-meters-config');
+    const meters = container.querySelectorAll('.kwh-meter-config');
+
+    if (meters.length > 1) {
+        meters[index].remove();
+        // Re-render om indices te updaten
+        const currentConfig = getKwhMetersFromForm();
+        currentConfig.splice(index, 1);
+        renderKwhMetersConfig(currentConfig);
+    }
+}
+
+// Haal kWh meters uit formulier
+function getKwhMetersFromForm() {
+    const container = document.getElementById('kwh-meters-config');
+    const meters = [];
+
+    container.querySelectorAll('.kwh-meter-config').forEach((meterDiv, index) => {
+        const nameInput = meterDiv.querySelector('.kwh-meter-name');
+        const hostInput = meterDiv.querySelector('.kwh-meter-host');
+        const enabledInput = meterDiv.querySelector('.kwh-meter-enabled');
+
+        meters.push({
+            name: nameInput.value || `Omvormer ${index + 1}`,
+            host: hostInput.value,
+            enabled: enabledInput.checked
+        });
+    });
+
+    return meters;
+}
+
 // Laad configuratie
 async function loadConfig() {
     try {
@@ -224,8 +376,7 @@ async function loadConfig() {
         document.getElementById('p1-enabled').checked = config.homewizard_p1.enabled;
         document.getElementById('p1-host').value = config.homewizard_p1.host || '';
 
-        document.getElementById('kwh-enabled').checked = config.homewizard_kwh.enabled;
-        document.getElementById('kwh-host').value = config.homewizard_kwh.host || '';
+        renderKwhMetersConfig(config.homewizard_kwh_meters);
 
         document.getElementById('pvoutput-system-id').value = config.pvoutput.system_id || '';
         document.getElementById('update-interval').value = config.update_interval;
@@ -244,10 +395,7 @@ async function saveConfig(event) {
             enabled: document.getElementById('p1-enabled').checked,
             host: document.getElementById('p1-host').value
         },
-        homewizard_kwh: {
-            enabled: document.getElementById('kwh-enabled').checked,
-            host: document.getElementById('kwh-host').value
-        },
+        homewizard_kwh_meters: getKwhMetersFromForm(),
         pvoutput: {
             system_id: document.getElementById('pvoutput-system-id').value,
             api_key: document.getElementById('pvoutput-api-key').value || undefined
@@ -336,4 +484,5 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('update-now-btn').addEventListener('click', forceUpdate);
     document.getElementById('toggle-config-btn').addEventListener('click', toggleConfig);
     document.getElementById('config-form').addEventListener('submit', saveConfig);
+    document.getElementById('add-kwh-meter-btn').addEventListener('click', addKwhMeter);
 });

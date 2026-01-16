@@ -5,10 +5,16 @@ Een complete Docker container oplossing die data van HomeWizard apparaten (P1 me
 ## Features
 
 - **Automatische data collectie** van HomeWizard P1 meter (stroomverbruik/teruglevering)
-- **Automatische data collectie** van HomeWizard kWh meter (zonnepanelen opwekking)
+- **Automatische data collectie** van HomeWizard kWh meter(s) (zonnepanelen opwekking)
+  - Ondersteuning voor **meerdere kWh meters** - ideaal voor meerdere omvormers
+  - Automatische combinatie van data van alle meters
 - **Automatisch doorsturen** naar PVOutput.org
+  - Stuurt zowel actuele waarden (power) als dagelijkse totalen (energy)
+  - Volledig compatible met PVOutput API v2 specificatie
 - **Live webinterface** met:
   - Real-time overzicht van opwekking, verbruik en grid import/export
+  - Dagelijkse totalen (opgewekt, verbruikt, import, export)
+  - Individuele weergave van elke omvormer/kWh meter
   - Grafieken met historische data (laatste uur)
   - Configuratie management via web interface
   - Responsive design voor mobiel en desktop
@@ -46,10 +52,15 @@ homewizard_p1:
   host: "192.168.1.100"  # IP adres van je HomeWizard P1 meter
   enabled: true
 
-# HomeWizard kWh Meter configuratie (voor zonnepanelen)
-homewizard_kwh:
-  host: "192.168.1.101"  # IP adres van je HomeWizard kWh meter
-  enabled: true
+# HomeWizard kWh Meters configuratie (voor zonnepanelen)
+# Je kunt meerdere meters toevoegen voor meerdere omvormers
+homewizard_kwh_meters:
+  - name: "Omvormer 1"
+    host: "192.168.1.101"
+    enabled: true
+  - name: "Omvormer 2"    # Optioneel: tweede omvormer
+    host: "192.168.1.102"
+    enabled: false        # Schakel in als je deze gebruikt
 
 # PVOutput configuratie
 pvoutput:
@@ -64,6 +75,11 @@ webserver:
   port: 8080
   host: "0.0.0.0"
 ```
+
+**Meerdere kWh meters (omvormers):**
+Als je meerdere omvormers hebt, kun je meerdere kWh meters toevoegen. De container combineert automatisch de data van alle meters en stuurt het totaal naar PVOutput. In de webinterface zie je ook elk individueel per omvormer.
+
+Zie [PVOUTPUT.md](PVOUTPUT.md) voor meer informatie over hoe de data wordt gecombineerd en naar PVOutput gestuurd.
 
 ### 3. HomeWizard API Keys verkrijgen
 

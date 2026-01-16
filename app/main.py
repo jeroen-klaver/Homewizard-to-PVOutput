@@ -16,13 +16,13 @@ from app.data_manager import DataManager
 config = Config()
 data_manager = DataManager()
 p1_client = None
-kwh_client = None
+kwh_clients = {}  # Dictionary om meerdere kWh meter clients op te slaan (key: host)
 pvoutput_client = None
 update_task = None
 
 async def collect_and_send_data():
     """Verzamel data van HomeWizard en stuur naar PVOutput"""
-    global p1_client, kwh_client, pvoutput_client
+    global p1_client, kwh_clients, pvoutput_client
 
     # Haal P1 data op
     p1_data = {}
@@ -35,27 +35,57 @@ async def collect_and_send_data():
         data_manager.add_p1_data(p1_data)
         print(f"P1 data verzameld: {p1_data.get('active_power_w', 0)}W")
 
-    # Haal kWh meter data op
-    kwh_data = {}
-    if config.homewizard_kwh_enabled and config.homewizard_kwh_host:
-        if not kwh_client:
-            kwh_client = HomeWizardClient(config.homewizard_kwh_host)
+    # Haal data op van alle kWh meters
+    kwh_data_list = []
+    kwh_meters = config.homewizard_kwh_meters_enabled
 
-        raw_kwh_data = await kwh_client.get_data()
-        kwh_data = HomeWizardDataProcessor.process_kwh_data(raw_kwh_data)
+    if kwh_meters:
+        for meter in kwh_meters:
+            meter_host = meter.get('host')
+            meter_name = meter.get('name', meter_host)
+
+            # Maak client aan als deze nog niet bestaat
+            if meter_host not in kwh_clients:
+                kwh_clients[meter_host] = HomeWizardClient(meter_host)
+
+            try:
+                # Haal data op van deze meter
+                raw_kwh_data = await kwh_clients[meter_host].get_data()
+                processed_data = HomeWizardDataProcessor.process_kwh_data(raw_kwh_data)
+
+                # Voeg meter naam toe aan data
+                processed_data['meter_name'] = meter_name
+                processed_data['meter_host'] = meter_host
+
+                kwh_data_list.append(processed_data)
+                print(f"kWh data verzameld van '{meter_name}': {processed_data.get('active_power_w', 0)}W")
+
+            except Exception as e:
+                print(f"Fout bij ophalen data van '{meter_name}' ({meter_host}): {e}")
+
+    # Combineer data van alle kWh meters
+    kwh_data = {}
+    if kwh_data_list:
+        kwh_data = HomeWizardDataProcessor.combine_kwh_data(kwh_data_list)
         data_manager.add_kwh_data(kwh_data)
-        print(f"kWh data verzameld: {kwh_data.get('active_power_w', 0)}W")
+        print(f"Totaal kWh data (alle meters): {kwh_data.get('active_power_w', 0)}W van {kwh_data.get('meter_count', 0)} meter(s)")
 
     # Stuur naar PVOutput
     if config.pvoutput_api_key and config.pvoutput_system_id:
         if not pvoutput_client:
             pvoutput_client = PVOutputClient(config.pvoutput_api_key, config.pvoutput_system_id)
 
-        pvoutput_data = PVOutputDataConverter.convert_to_pvoutput(p1_data, kwh_data)
+        # Haal dagelijkse totalen op
+        daily_totals = data_manager.get_daily_totals()
+
+        # Converteer naar PVOutput formaat (met dagelijkse totalen)
+        pvoutput_data = PVOutputDataConverter.convert_to_pvoutput(p1_data, kwh_data, daily_totals)
 
         if pvoutput_data:
             await pvoutput_client.add_status(
+                energy_generation=pvoutput_data.get('energy_generation'),
                 power_generation=pvoutput_data.get('power_generation'),
+                energy_consumption=pvoutput_data.get('energy_consumption'),
                 power_consumption=pvoutput_data.get('power_consumption')
             )
             print(f"Data naar PVOutput gestuurd: {pvoutput_data}")
@@ -111,11 +141,13 @@ async def home(request: Request):
 @app.get("/api/status")
 async def get_status():
     """Haal actuele status op"""
+    kwh_meters = config.homewizard_kwh_meters_enabled
     return {
         "status": "running",
         "config": {
             "p1_enabled": config.homewizard_p1_enabled,
-            "kwh_enabled": config.homewizard_kwh_enabled,
+            "kwh_enabled": len(kwh_meters) > 0,
+            "kwh_meter_count": len(kwh_meters),
             "pvoutput_configured": bool(config.pvoutput_api_key and config.pvoutput_system_id),
             "update_interval": config.update_interval
         }
@@ -125,6 +157,11 @@ async def get_status():
 async def get_latest_data():
     """Haal nieuwste data op"""
     return data_manager.get_latest_data()
+
+@app.get("/api/data/daily")
+async def get_daily_totals():
+    """Haal dagelijkse totalen op (voor PVOutput)"""
+    return data_manager.get_daily_totals()
 
 @app.get("/api/data/history")
 async def get_history_data(hours: int = 1):
@@ -136,7 +173,13 @@ async def get_history_data(hours: int = 1):
 @app.get("/api/data/statistics")
 async def get_statistics():
     """Haal statistieken op"""
-    return data_manager.get_statistics()
+    stats = data_manager.get_statistics()
+
+    # Voeg individuele kWh meter data toe als beschikbaar
+    if data_manager.latest_kwh_data and 'meters' in data_manager.latest_kwh_data:
+        stats['individual_kwh_meters'] = data_manager.latest_kwh_data['meters']
+
+    return stats
 
 @app.get("/api/config")
 async def get_config():
@@ -146,10 +189,7 @@ async def get_config():
             "host": config.homewizard_p1_host,
             "enabled": config.homewizard_p1_enabled
         },
-        "homewizard_kwh": {
-            "host": config.homewizard_kwh_host,
-            "enabled": config.homewizard_kwh_enabled
-        },
+        "homewizard_kwh_meters": config.homewizard_kwh_meters,
         "pvoutput": {
             "system_id": config.pvoutput_system_id,
             "api_key_configured": bool(config.pvoutput_api_key)
@@ -160,16 +200,16 @@ async def get_config():
 @app.post("/api/config")
 async def update_config(new_config: Dict):
     """Update configuratie"""
-    global p1_client, kwh_client, pvoutput_client
+    global p1_client, kwh_clients, pvoutput_client
 
     # Update config data
     if "homewizard_p1" in new_config:
         config.data["homewizard_p1"] = new_config["homewizard_p1"]
         p1_client = None  # Reset client
 
-    if "homewizard_kwh" in new_config:
-        config.data["homewizard_kwh"] = new_config["homewizard_kwh"]
-        kwh_client = None  # Reset client
+    if "homewizard_kwh_meters" in new_config:
+        config.data["homewizard_kwh_meters"] = new_config["homewizard_kwh_meters"]
+        kwh_clients = {}  # Reset alle kWh clients
 
     if "pvoutput" in new_config:
         config.data["pvoutput"] = new_config["pvoutput"]

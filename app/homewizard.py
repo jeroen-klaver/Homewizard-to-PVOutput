@@ -1,5 +1,5 @@
 import httpx
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from datetime import datetime
 
 class HomeWizardClient:
@@ -81,3 +81,38 @@ class HomeWizardDataProcessor:
             'active_power_w': data.get('active_power_w', 0),
             'timestamp': datetime.now().isoformat()
         }
+
+    @staticmethod
+    def combine_kwh_data(kwh_data_list: List[Dict]) -> Dict:
+        """
+        Combineer data van meerdere kWh meters
+
+        Args:
+            kwh_data_list: Lijst van verwerkte kWh meter data
+
+        Returns:
+            Dict met gecombineerde data:
+            - total_power_export_kwh: som van alle meters
+            - active_power_w: som van alle meters
+            - meters: lijst met individuele meter data
+            - timestamp: tijd van meting
+        """
+        if not kwh_data_list:
+            return {}
+
+        # Filter lege data
+        valid_data = [d for d in kwh_data_list if d]
+
+        if not valid_data:
+            return {}
+
+        # Combineer de data
+        combined = {
+            'total_power_export_kwh': sum(d.get('total_power_export_kwh', 0) for d in valid_data),
+            'active_power_w': sum(d.get('active_power_w', 0) for d in valid_data),
+            'timestamp': datetime.now().isoformat(),
+            'meters': valid_data,  # Bewaar individuele meter data
+            'meter_count': len(valid_data)
+        }
+
+        return combined
