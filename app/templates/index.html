@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeWizard naar PVOutput Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Solar Data Dashboard</h1>
+            <p class="subtitle">HomeWizard naar PVOutput</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span id="status-indicator" class="status-value">⚫ Laden...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Laatste update:</span>
+                <span id="last-update" class="status-value">-</span>
+            </div>
+        </div>
+
+        <div class="cards-grid">
+            <!-- Zonnepanelen Opwekking -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>☀️ Zonnepanelen</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric-large">
+                        <div class="metric-value" id="solar-power">-</div>
+                        <div class="metric-unit">Watt</div>
+                    </div>
+                    <div class="metric-small">
+                        <span class="metric-label">Totaal opgewekt:</span>
+                        <span id="solar-total">-</span> kWh
+                    </div>
+                </div>
+            </div>
+
+            <!-- Huis Verbruik -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>🏠 Verbruik</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric-large">
+                        <div class="metric-value" id="consumption-power">-</div>
+                        <div class="metric-unit">Watt</div>
+                    </div>
+                    <div class="metric-small">
+                        <span class="metric-label">Zelfverbruik:</span>
+                        <span id="self-consumption">-</span> W
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid Import/Export -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>🔌 Netwerk</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric-large">
+                        <div class="metric-value" id="grid-power">-</div>
+                        <div class="metric-unit">Watt</div>
+                    </div>
+                    <div class="metric-small">
+                        <span class="metric-label" id="grid-label">-</span>
+                        <span id="grid-status">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PVOutput Status -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📊 PVOutput</h3>
+                </div>
+                <div class="card-content">
+                    <div class="metric-large">
+                        <div class="metric-value" id="pvoutput-status">-</div>
+                        <div class="metric-unit">Status</div>
+                    </div>
+                    <button id="update-now-btn" class="btn-primary">Nu updaten</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafieken -->
+        <div class="charts-section">
+            <div class="chart-container">
+                <h3>Vermogen overzicht (laatste uur)</h3>
+                <canvas id="powerChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Configuratie Sectie -->
+        <div class="config-section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>⚙️ Configuratie</h3>
+                    <button id="toggle-config-btn" class="btn-secondary">Toon</button>
+                </div>
+                <div id="config-content" class="card-content" style="display: none;">
+                    <form id="config-form">
+                        <div class="form-section">
+                            <h4>HomeWizard P1 Meter</h4>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="p1-enabled" name="p1-enabled">
+                                    Ingeschakeld
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="p1-host">IP Adres:</label>
+                                <input type="text" id="p1-host" name="p1-host" placeholder="192.168.1.100">
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>HomeWizard kWh Meter</h4>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="kwh-enabled" name="kwh-enabled">
+                                    Ingeschakeld
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="kwh-host">IP Adres:</label>
+                                <input type="text" id="kwh-host" name="kwh-host" placeholder="192.168.1.101">
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>PVOutput</h4>
+                            <div class="form-group">
+                                <label for="pvoutput-api-key">API Key:</label>
+                                <input type="password" id="pvoutput-api-key" name="pvoutput-api-key">
+                            </div>
+                            <div class="form-group">
+                                <label for="pvoutput-system-id">System ID:</label>
+                                <input type="text" id="pvoutput-system-id" name="pvoutput-system-id">
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Update Interval</h4>
+                            <div class="form-group">
+                                <label for="update-interval">Interval (seconden, min 300):</label>
+                                <input type="number" id="update-interval" name="update-interval" min="300" value="300">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">Opslaan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
