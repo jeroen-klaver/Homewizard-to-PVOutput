@@ -13,6 +13,14 @@ Een complete Docker container oplossing die data van HomeWizard apparaten (P1 me
 - **Automatisch doorsturen** naar PVOutput.org
   - Stuurt zowel actuele waarden (power) als dagelijkse totalen (energy)
   - Volledig compatible met PVOutput API v2 specificatie
+  - **Voltage reporting** (v6 parameter) - gemiddelde van alle fases
+  - **Temperatuur** (v5 parameter) via Open-Meteo integratie
+  - **Weather conditions** (cd parameter) - automatische mapping van WMO codes naar PVOutput formaat
+- **Weather integratie** via Open-Meteo API:
+  - Geen API key vereist
+  - Actuele temperatuur en weather conditions
+  - Smart caching (15 minuten) voor optimale performance
+  - Graceful degradation bij API problemen
 - **Live webinterface** met:
   - Real-time overzicht van opwekking, verbruik en grid import/export
   - Dagelijkse totalen (opgewekt, verbruikt, import, export)
