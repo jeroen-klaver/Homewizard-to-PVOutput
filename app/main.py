@@ -90,7 +90,7 @@ async def collect_and_send_data():
             try:
                 weather_data = await weather_client.get_weather()
                 data_manager.add_weather_data(weather_data)
-                print(f"Weather data verzameld: {weather_data.get('temperature_c')}°C")
+                print(f"Weather data verzameld: {weather_data.get('temperature_c')}°C, {weather_data.get('weather_condition')}")
             except Exception as e:
                 print(f"Fout bij ophalen weather data: {e} (niet-fataal, doorgaan zonder weather)")
 
@@ -114,7 +114,8 @@ async def collect_and_send_data():
                 energy_consumption=pvoutput_data.get('energy_consumption'),
                 power_consumption=pvoutput_data.get('power_consumption'),
                 temperature=pvoutput_data.get('temperature'),
-                voltage=pvoutput_data.get('voltage')
+                voltage=pvoutput_data.get('voltage'),
+                condition=pvoutput_data.get('condition')
             )
             print(f"Data naar PVOutput gestuurd: {pvoutput_data}")
 

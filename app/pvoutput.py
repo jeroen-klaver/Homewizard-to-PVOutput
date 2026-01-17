@@ -24,7 +24,8 @@ class PVOutputClient:
         energy_consumption: Optional[int] = None,
         power_consumption: Optional[int] = None,
         temperature: Optional[float] = None,
-        voltage: Optional[float] = None
+        voltage: Optional[float] = None,
+        condition: Optional[str] = None
     ) -> bool:
         """
         Voeg status toe aan PVOutput
@@ -36,6 +37,7 @@ class PVOutputClient:
             power_consumption: Actueel verbruikt vermogen in W
             temperature: Temperatuur in C
             voltage: Voltage in V
+            condition: Weather condition (Fine, Cloudy, Showers, etc.)
 
         Returns:
             True als succesvol, False bij fout
@@ -61,6 +63,8 @@ class PVOutputClient:
             params['v5'] = temperature
         if voltage is not None:
             params['v6'] = voltage
+        if condition is not None:
+            params['cd'] = condition
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -116,6 +120,7 @@ class PVOutputDataConverter:
             - energy_consumption: Totaal verbruikt vandaag (Wh)
             - power_consumption: Actueel verbruik (W)
             - temperature: Temperatuur (°C)
+            - condition: Weather condition (Fine, Cloudy, etc.)
             - voltage: Voltage (V)
 
         PVOutput API parameters:
@@ -125,6 +130,7 @@ class PVOutputDataConverter:
         - v4: Power Consumption (W) - actueel
         - v5: Temperature (°C) - optioneel
         - v6: Voltage (V) - optioneel
+        - cd: Condition (weather description) - optioneel
         """
         result = {}
 
@@ -144,6 +150,10 @@ class PVOutputDataConverter:
         # v5: Temperature (van weather data)
         if weather_data and weather_data.get('temperature_c') is not None:
             result['temperature'] = round(weather_data.get('temperature_c'), 1)
+
+        # cd: Weather Condition (van weather data)
+        if weather_data and weather_data.get('weather_condition') is not None:
+            result['condition'] = weather_data.get('weather_condition')
 
         # v6: Voltage (gemiddelde van alle fases)
         if p1_data and p1_data.get('voltage_avg_v') is not None:

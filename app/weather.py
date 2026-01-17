@@ -114,6 +114,39 @@ class WeatherDataProcessor:
     """Process en normalizeer weather data van verschillende providers"""
 
     @staticmethod
+    def wmo_to_pvoutput_condition(wmo_code: int) -> str:
+        """
+        Map WMO weather code naar PVOutput condition string
+
+        Args:
+            wmo_code: WMO code (0-99)
+
+        Returns:
+            PVOutput condition string (Fine, Cloudy, Showers, etc.)
+        """
+        # Mapping table gebaseerd op WMO codes
+        if wmo_code == 0 or wmo_code == 1:
+            return "Fine"
+        elif wmo_code == 2:
+            return "Partly Cloudy"
+        elif wmo_code == 3:
+            return "Cloudy"
+        elif wmo_code in (45, 48):
+            return "Fog"
+        elif 51 <= wmo_code <= 67:  # Drizzle and rain
+            return "Showers"
+        elif 71 <= wmo_code <= 77:  # Snow
+            return "Snow"
+        elif 80 <= wmo_code <= 82:  # Rain showers
+            return "Showers"
+        elif 85 <= wmo_code <= 86:  # Snow showers
+            return "Snow"
+        elif wmo_code >= 95:  # Thunderstorm
+            return "Storm"
+        else:
+            return "Fine"  # Default fallback
+
+    @staticmethod
     def process_openmeteo_data(data: Dict) -> Dict:
         """
         Process Open-Meteo API response
@@ -125,6 +158,7 @@ class WeatherDataProcessor:
             Genormaliseerd dict met:
             - temperature_c: float
             - weather_code: int
+            - weather_condition: str (PVOutput format)
             - timestamp: str (ISO format)
         """
         if not data or 'current' not in data:
@@ -136,8 +170,11 @@ class WeatherDataProcessor:
         if temperature is None:
             raise ValueError("Invalid Open-Meteo response: missing temperature_2m")
 
+        wmo_code = current.get('weather_code', 0)
+
         return {
             'temperature_c': float(temperature),
-            'weather_code': current.get('weather_code', 0),
+            'weather_code': wmo_code,
+            'weather_condition': WeatherDataProcessor.wmo_to_pvoutput_condition(wmo_code),
             'timestamp': datetime.now().isoformat()
         }
